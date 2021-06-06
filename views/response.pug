@@ -1,0 +1,15 @@
+html
+  head
+    title Slack Bot Response
+    link(rel='stylesheet', type="text/css", href='/views/style.css')
+  body
+    h1 Welcome #{user}
+    h5 I am glad to know that you feel #{feeling}
+    p.
+        Below are your available times for a chat
+    ul(class=time)
+        each val, index in availability
+            li= index + ': ' + val
+    p.
+        Regards,
+        The Slack Bot
