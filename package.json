@@ -8,7 +8,9 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "ts-node index.ts",
+    "localStart": "ts-node index.ts",
+    "start": "node build/index.js",
+    "postinstall": "tsc",
     "nodemon": "nodemon --watch './**/*.ts' --exec ts-node index.ts"
   },
   "author": "",
