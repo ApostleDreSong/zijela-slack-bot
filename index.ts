@@ -260,19 +260,9 @@ rtm && rtm.on('ready', async () => {
 rtm && rtm.on('slack_event', async (eventType, event) => {
     if (event && event.type === 'message') {
         if (event.text === 'Hello @bot') {
-            hello(event.channel, event.user)
+            web && await web.chat.postMessage(
+                Feeling(event.channel)
+            )
         }
     }
 })
-
-
-function hello(channelId: string, userId: string) {
-    sendMessage(channelId, "Welcome. How are you doing?")
-}
-
-async function sendMessage(channel: string, message: string) {
-    web && await web.chat.postMessage({
-        channel: channel,
-        text: message,
-    })
-}
