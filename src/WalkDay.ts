@@ -7,7 +7,7 @@ export const WalkDay = (channelID: string) => ({
             "block_id": 'availability_days',
             "text": {
                 "type": "mrkdwn",
-                "text": ""
+                "text": "Day of the week"
             },
             "accessory": {
                 "type": "checkboxes",

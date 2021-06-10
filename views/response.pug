@@ -4,12 +4,26 @@ html
     link(rel='stylesheet', type="text/css", href='/views/style.css')
   body
     h1 Welcome #{user}
-    h5 I am glad to know that you feel #{feeling}
+    h2 I am glad to know that you feel #{feeling}
     p.
-        Below are your available times for a chat
+        Below are your available times for a walk
     ul(class=time)
-        each val, index in availability
+        each val, index in availability_time
             li= index + ': ' + val
+    
+    p.
+      Below are your available days for a walk
+    ul(class=time)
+        each val, index in availability_day
+            li= index + ': ' + val
+
+    p.
+      You said you like:
+    ul(class=time)
+        each val, index in hobbies
+            li= index + ': ' + val
+    p.
+      And here is your response to the number scale question - #{numScale}
     p.
         Regards,
         The Slack Bot
