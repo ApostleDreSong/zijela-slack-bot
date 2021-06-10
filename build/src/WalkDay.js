@@ -10,7 +10,7 @@ var WalkDay = function (channelID) { return ({
             "block_id": 'availability_days',
             "text": {
                 "type": "mrkdwn",
-                "text": ""
+                "text": "Day of the week"
             },
             "accessory": {
                 "type": "checkboxes",

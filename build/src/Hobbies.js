@@ -13,7 +13,7 @@ var Hobbies = function (channelID) { return ({
                 "text": "Choose your hobbies"
             },
             "accessory": {
-                "action_id": "text1234",
+                "action_id": "hobbies_action",
                 "type": "multi_static_select",
                 "placeholder": {
                     "type": "plain_text",
@@ -29,28 +29,28 @@ var Hobbies = function (channelID) { return ({
                     },
                     {
                         "text": {
-                            "type": "Music",
+                            "type": "plain_text",
                             "text": "*Music*"
                         },
                         "value": "music"
                     },
                     {
                         "text": {
-                            "type": "Sleep",
+                            "type": "plain_text",
                             "text": "*Sleep*"
                         },
                         "value": "sleep"
                     },
                     {
                         "text": {
-                            "type": "Movies",
+                            "type": "plain_text",
                             "text": "*Movies*"
                         },
                         "value": "movies"
                     },
                     {
                         "text": {
-                            "type": "Basketball",
+                            "type": "plain_text",
                             "text": "*Basketball*"
                         },
                         "value": "basketball"
