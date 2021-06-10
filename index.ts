@@ -2,6 +2,12 @@ import { RTMClient } from '@slack/rtm-api'
 import { WebClient } from '@slack/web-api';
 import express, { Request, Response } from 'express';
 import { model, Schema } from 'mongoose';
+import { Feeling } from './src/Feeling';
+import { Hobbies } from './src/Hobbies';
+import { NumScale } from './src/NumScale';
+import { Submit } from './src/Submit';
+import { WalkDay } from './src/WalkDay';
+import { WalkTime } from './src/WalkTime';
 require('dotenv').config();
 const rtm = process.env.SLACK_BOT_TOKEN && new RTMClient(process.env.SLACK_BOT_TOKEN);
 const web = process.env.SLACK_BOT_TOKEN && new WebClient(process.env.SLACK_BOT_TOKEN);
@@ -16,21 +22,21 @@ mongoose.connect(process.env.MONGO_CONNECTION_STRING, { useNewUrlParser: true, u
 const ResponseSchema = new Schema<ResponseType>({
     user: { type: String, unique: true, required: true },
     feeling: String,
-    availability: [String]
+    availability: [String],
+    hobbies: [String],
+    numScale: String
 });
 
 interface ResponseType {
-    user: string,
-    feeling: string,
-    availability: string[]
+    user: string | undefined;
+    feeling: string | undefined;
+    availability_time: string[] | undefined;
+    availability_day: string[] | undefined;
+    hobbies: string[] | undefined;
+    numScale: string | undefined
 }
 
 const ResponseModel = model<ResponseType>('slack-response', ResponseSchema);
-
-interface feelingType {
-    feeling: string;
-    availability: string[];
-}
 
 interface TimesType {
     text: { type: string, text: string, verbatim: boolean },
@@ -38,141 +44,14 @@ interface TimesType {
     description: { type: string, text: string, verbatim: boolean }
 }
 
-const state: feelingType = {
-    feeling: '',
-    availability: []
+const state: ResponseType = {
+    user: undefined,
+    feeling: undefined,
+    availability_time: undefined,
+    availability_day: undefined,
+    hobbies: undefined,
+    numScale: undefined
 }
-
-const Feeling = (channelID: string) => ({
-    channel: channelID,
-    "text": "",
-    "blocks": [
-        {
-            "type": "section",
-            "block_id": "feeling",
-            "text": {
-                "type": "mrkdwn",
-                "text": "Welcome. How are you feeling today?"
-            },
-            "accessory": {
-                "action_id": "feeling",
-                "type": "static_select",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "select option"
-                },
-                "options": [
-                    {
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Doing Well"
-                        },
-                        "value": "well"
-                    },
-                    {
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Neutral"
-                        },
-                        "value": "neutral"
-                    },
-                    {
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Lucky"
-                        },
-                        "value": "lucky"
-                    }
-                ]
-            }
-        }
-    ]
-})
-
-const Submit = (channelID: string) => ({
-    channel: channelID,
-    "text": "Proceed to save responses?",
-    "blocks": [
-        {
-            "type": "actions",
-            "block_id": "submit",
-            "elements": [
-                {
-                    "type": "button",
-                    "text": {
-                        "type": "plain_text",
-                        "text": "YES"
-                    },
-                    "style": "primary",
-                    "value": "yes"
-                },
-                {
-                    "type": "button",
-                    "text": {
-                        "type": "plain_text",
-                        "text": "NO"
-                    },
-                    "style": "danger",
-                    "value": "no"
-                }
-            ]
-        }
-    ]
-})
-
-const Walk = (channelID: string) => ({
-    channel: channelID,
-    "text": "",
-    "blocks": [
-        {
-            "type": "section",
-            "block_id": 'availability',
-            "text": {
-                "type": "mrkdwn",
-                "text": "When are you free this week for a walk?"
-            },
-            "accessory": {
-                "type": "checkboxes",
-                "options": [
-                    {
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": "12:00"
-                        },
-                        "description": {
-                            "type": "mrkdwn",
-                            "text": "12:00"
-                        },
-                        "value": "12:00"
-                    },
-                    {
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": "12:30"
-                        },
-                        "description": {
-                            "type": "mrkdwn",
-                            "text": "12:30"
-                        },
-                        "value": "12:30"
-                    },
-                    {
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": "13:00"
-                        },
-                        "description": {
-                            "type": "mrkdwn",
-                            "text": "13:00"
-                        },
-                        "value": "13:00"
-                    }
-                ],
-                "action_id": "availability"
-            }
-        }
-    ]
-})
 
 app.post('/', async (req: Request, res: Response) => {
     res.status(200).send();
@@ -187,9 +66,9 @@ app.get('/view-response/:username', async (req: Request, res: Response) => {
     await ResponseModel.findOne({
         user: username
     })
-    .then(response=>{
-        res.render('response', { user: username, feeling: response?.feeling, availability: response?.availability })
-    })
+        .then(response => {
+            res.render('response', { user: username, feeling: response?.feeling, availability: response?.availability_time })
+        })
 })
 
 app.post('/responses', async (req: Request, res: Response) => {
@@ -200,22 +79,67 @@ app.post('/responses', async (req: Request, res: Response) => {
     switch (response.message.blocks[0].block_id) {
         case "feeling":
             state.feeling = response.actions[0].selected_option.value;
-            web && await web.chat.postMessage(
-                Walk(channel_id)
+            !state.availability_day && web && await web.chat.postMessage(
+                {
+                    channel: channel_id,
+                    "text": "When are you free this week for a walk?",
+                });
+            !state.availability_time && web && await web.chat.postMessage(
+                WalkTime(channel_id)
+            )
+            !state.availability_day && web && await web.chat.postMessage(
+                WalkDay(channel_id)
             )
             break;
 
-        case "availability":
+        case "availability_time":
             const times = response.actions[0].selected_options;
             const leanArr: string[] = [];
             times.forEach((element: TimesType) => {
                 leanArr.push(element.value);
             });
-            state.availability = leanArr;
-            web && await web.chat.postMessage(
+            state.availability_time = leanArr;
+            break;
+        // !state.lastquestion && web && await web.chat.postMessage(
+        //     {
+        //         channel: channel_id,
+        //         "text": "Proceed to save responses?",
+        //     });
+        // web && await web.chat.postMessage(
+        //     Submit(channel_id)
+        // )
+
+        case "availability_day":
+            const days = response.actions[0].selected_options;
+            const daysArr: string[] = [];
+            days.forEach((element: TimesType) => {
+                leanArr.push(element.value);
+            });
+            state.availability_day = daysArr;
+            !state.hobbies && web && await web.chat.postMessage(
+                Hobbies(channel_id)
+            )
+            break;
+
+        case "hobbies":
+            const hobby = response.actions[0].selected_options;
+            const hobbyArr: string[] = [];
+            hobby.forEach((element: TimesType) => {
+                hobbyArr.push(element.value);
+            });
+            state.hobbies = hobbyArr;
+            !state.numScale && web && await web.chat.postMessage(
+                NumScale(channel_id)
+            )
+            break;
+
+        case "scale":
+            const scale = response.actions[0].selected_option;
+            state.numScale = scale;
+            state.numScale && web && await web.chat.postMessage(
                 {
                     channel: channel_id,
-                    "text": "Proceed to save responses?",
+                    "text": "Thank you. Proceed to save responses?",
                 });
             web && await web.chat.postMessage(
                 Submit(channel_id)
@@ -229,15 +153,23 @@ app.post('/responses', async (req: Request, res: Response) => {
                     user: response.user.username,
                     ...state
                 })
-                newUser.save(function (err, userResponse) {
-                    if (err) return console.error(err);
-                });
-                web && await web.chat.postMessage(
-                    {
-                        channel: channel_id,
-                        text: `Thank you for your responses. Please visit ${process.env.BASE_URL}/view-response/${response.user.username} to view your reponse`
+                newUser.save(async function (err, userResponse) {
+                    if (err) {
+                        console.error(err);
+                        return web && await web.chat.postMessage(
+                            {
+                                channel: channel_id,
+                                text: `Thank you for your responses. Please visit ${process.env.BASE_URL}/view-response/${response.user.username} to view your reponse`
+                            }
+                        )
                     }
-                )
+                    web && await web.chat.postMessage(
+                        {
+                            channel: channel_id,
+                            text: `Thank you for your responses. Please visit ${process.env.BASE_URL}/view-response/${response.user.username} to view your reponse`
+                        }
+                    )
+                });
             }
             break;
 
