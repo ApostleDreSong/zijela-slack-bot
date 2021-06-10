@@ -54,6 +54,12 @@ var rtm_api_1 = require("@slack/rtm-api");
 var web_api_1 = require("@slack/web-api");
 var express_1 = __importDefault(require("express"));
 var mongoose_1 = require("mongoose");
+var Feeling_1 = require("./src/Feeling");
+var Hobbies_1 = require("./src/Hobbies");
+var NumScale_1 = require("./src/NumScale");
+var Submit_1 = require("./src/Submit");
+var WalkDay_1 = require("./src/WalkDay");
+var WalkTime_1 = require("./src/WalkTime");
 require('dotenv').config();
 var rtm = process.env.SLACK_BOT_TOKEN && new rtm_api_1.RTMClient(process.env.SLACK_BOT_TOKEN);
 var web = process.env.SLACK_BOT_TOKEN && new web_api_1.WebClient(process.env.SLACK_BOT_TOKEN);
@@ -67,141 +73,19 @@ mongoose.connect(process.env.MONGO_CONNECTION_STRING, { useNewUrlParser: true, u
 var ResponseSchema = new mongoose_1.Schema({
     user: { type: String, unique: true, required: true },
     feeling: String,
-    availability: [String]
+    availability: [String],
+    hobbies: [String],
+    numScale: String
 });
 var ResponseModel = mongoose_1.model('slack-response', ResponseSchema);
 var state = {
-    feeling: '',
-    availability: []
+    user: undefined,
+    feeling: undefined,
+    availability_time: undefined,
+    availability_day: undefined,
+    hobbies: undefined,
+    numScale: undefined
 };
-var Feeling = function (channelID) { return ({
-    channel: channelID,
-    "text": "",
-    "blocks": [
-        {
-            "type": "section",
-            "block_id": "feeling",
-            "text": {
-                "type": "mrkdwn",
-                "text": "Welcome. How are you feeling today?"
-            },
-            "accessory": {
-                "action_id": "feeling",
-                "type": "static_select",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "select option"
-                },
-                "options": [
-                    {
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Doing Well"
-                        },
-                        "value": "well"
-                    },
-                    {
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Neutral"
-                        },
-                        "value": "neutral"
-                    },
-                    {
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Lucky"
-                        },
-                        "value": "lucky"
-                    }
-                ]
-            }
-        }
-    ]
-}); };
-var Submit = function (channelID) { return ({
-    channel: channelID,
-    "text": "Proceed to save responses?",
-    "blocks": [
-        {
-            "type": "actions",
-            "block_id": "submit",
-            "elements": [
-                {
-                    "type": "button",
-                    "text": {
-                        "type": "plain_text",
-                        "text": "YES"
-                    },
-                    "style": "primary",
-                    "value": "yes"
-                },
-                {
-                    "type": "button",
-                    "text": {
-                        "type": "plain_text",
-                        "text": "NO"
-                    },
-                    "style": "danger",
-                    "value": "no"
-                }
-            ]
-        }
-    ]
-}); };
-var Walk = function (channelID) { return ({
-    channel: channelID,
-    "text": "",
-    "blocks": [
-        {
-            "type": "section",
-            "block_id": 'availability',
-            "text": {
-                "type": "mrkdwn",
-                "text": "When are you free this week for a walk?"
-            },
-            "accessory": {
-                "type": "checkboxes",
-                "options": [
-                    {
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": "12:00"
-                        },
-                        "description": {
-                            "type": "mrkdwn",
-                            "text": "12:00"
-                        },
-                        "value": "12:00"
-                    },
-                    {
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": "12:30"
-                        },
-                        "description": {
-                            "type": "mrkdwn",
-                            "text": "12:30"
-                        },
-                        "value": "12:30"
-                    },
-                    {
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": "13:00"
-                        },
-                        "description": {
-                            "type": "mrkdwn",
-                            "text": "13:00"
-                        },
-                        "value": "13:00"
-                    }
-                ],
-                "action_id": "availability"
-            }
-        }
-    ]
-}); };
 app.post('/', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var channel_id, _a;
     return __generator(this, function (_b) {
@@ -211,7 +95,7 @@ app.post('/', function (req, res) { return __awaiter(void 0, void 0, void 0, fun
                 channel_id = req.body.channel_id;
                 _a = web;
                 if (!_a) return [3 /*break*/, 2];
-                return [4 /*yield*/, web.chat.postMessage(Feeling(channel_id))];
+                return [4 /*yield*/, web.chat.postMessage(Feeling_1.Feeling(channel_id))];
             case 1:
                 _a = (_b.sent());
                 _b.label = 2;
@@ -231,7 +115,7 @@ app.get('/view-response/:username', function (req, res) { return __awaiter(void 
                         user: username
                     })
                         .then(function (response) {
-                        res.render('response', { user: username, feeling: response === null || response === void 0 ? void 0 : response.feeling, availability: response === null || response === void 0 ? void 0 : response.availability });
+                        res.render('response', { user: username, feeling: response === null || response === void 0 ? void 0 : response.feeling, availability: response === null || response === void 0 ? void 0 : response.availability_time });
                     })];
             case 1:
                 _a.sent();
@@ -240,9 +124,9 @@ app.get('/view-response/:username', function (req, res) { return __awaiter(void 
     });
 }); });
 app.post('/responses', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var response, channel_id, _a, _b, times, leanArr_1, _c, _d, res_1, newUser, _e;
-    return __generator(this, function (_f) {
-        switch (_f.label) {
+    var response, channel_id, _a, _b, _c, _d, times, leanArr_1, days, daysArr, _e, hobby, hobbyArr_1, _f, scale, _g, _h, res_1, newUser;
+    return __generator(this, function (_j) {
+        switch (_j.label) {
             case 0:
                 // res.status(200).send({ "challenge": req.body.challenge });
                 res.status(200).send();
@@ -251,71 +135,149 @@ app.post('/responses', function (req, res) { return __awaiter(void 0, void 0, vo
                 _a = response.message.blocks[0].block_id;
                 switch (_a) {
                     case "feeling": return [3 /*break*/, 1];
-                    case "availability": return [3 /*break*/, 4];
-                    case "submit": return [3 /*break*/, 9];
+                    case "availability_time": return [3 /*break*/, 8];
+                    case "availability_day": return [3 /*break*/, 9];
+                    case "hobbies": return [3 /*break*/, 12];
+                    case "scale": return [3 /*break*/, 15];
+                    case "submit": return [3 /*break*/, 20];
                 }
-                return [3 /*break*/, 13];
+                return [3 /*break*/, 21];
             case 1:
                 state.feeling = response.actions[0].selected_option.value;
-                _b = web;
+                _b = !state.availability_day && web;
                 if (!_b) return [3 /*break*/, 3];
-                return [4 /*yield*/, web.chat.postMessage(Walk(channel_id))];
+                return [4 /*yield*/, web.chat.postMessage({
+                        channel: channel_id,
+                        "text": "When are you free this week for a walk?",
+                    })];
             case 2:
-                _b = (_f.sent());
-                _f.label = 3;
+                _b = (_j.sent());
+                _j.label = 3;
             case 3:
                 _b;
-                return [3 /*break*/, 14];
+                _c = !state.availability_time && web;
+                if (!_c) return [3 /*break*/, 5];
+                return [4 /*yield*/, web.chat.postMessage(WalkTime_1.WalkTime(channel_id))];
             case 4:
+                _c = (_j.sent());
+                _j.label = 5;
+            case 5:
+                _c;
+                _d = !state.availability_day && web;
+                if (!_d) return [3 /*break*/, 7];
+                return [4 /*yield*/, web.chat.postMessage(WalkDay_1.WalkDay(channel_id))];
+            case 6:
+                _d = (_j.sent());
+                _j.label = 7;
+            case 7:
+                _d;
+                return [3 /*break*/, 22];
+            case 8:
                 times = response.actions[0].selected_options;
                 leanArr_1 = [];
                 times.forEach(function (element) {
                     leanArr_1.push(element.value);
                 });
-                state.availability = leanArr_1;
-                _c = web;
-                if (!_c) return [3 /*break*/, 6];
-                return [4 /*yield*/, web.chat.postMessage({
-                        channel: channel_id,
-                        "text": "Proceed to save responses?",
-                    })];
-            case 5:
-                _c = (_f.sent());
-                _f.label = 6;
-            case 6:
-                _c;
-                _d = web;
-                if (!_d) return [3 /*break*/, 8];
-                return [4 /*yield*/, web.chat.postMessage(Submit(channel_id))];
-            case 7:
-                _d = (_f.sent());
-                _f.label = 8;
-            case 8:
-                _d;
-                return [3 /*break*/, 14];
+                state.availability_time = leanArr_1;
+                return [3 /*break*/, 22];
             case 9:
-                res_1 = response.actions[0].value;
-                if (!(res_1 === 'yes')) return [3 /*break*/, 12];
-                newUser = new ResponseModel(__assign({ user: response.user.username }, state));
-                newUser.save(function (err, userResponse) {
-                    if (err)
-                        return console.error(err);
+                days = response.actions[0].selected_options;
+                daysArr = [];
+                days.forEach(function (element) {
+                    leanArr_1.push(element.value);
                 });
-                _e = web;
+                state.availability_day = daysArr;
+                _e = !state.hobbies && web;
                 if (!_e) return [3 /*break*/, 11];
-                return [4 /*yield*/, web.chat.postMessage({
-                        channel: channel_id,
-                        text: "Thank you for your responses. Please visit " + process.env.BASE_URL + "/view-response/" + response.user.username + " to view your reponse"
-                    })];
+                return [4 /*yield*/, web.chat.postMessage(Hobbies_1.Hobbies(channel_id))];
             case 10:
-                _e = (_f.sent());
-                _f.label = 11;
+                _e = (_j.sent());
+                _j.label = 11;
             case 11:
                 _e;
-                _f.label = 12;
-            case 12: return [3 /*break*/, 14];
-            case 13: return [3 /*break*/, 14];
-            case 14: return [2 /*return*/];
+                return [3 /*break*/, 22];
+            case 12:
+                hobby = response.actions[0].selected_options;
+                hobbyArr_1 = [];
+                hobby.forEach(function (element) {
+                    hobbyArr_1.push(element.value);
+                });
+                state.hobbies = hobbyArr_1;
+                _f = !state.numScale && web;
+                if (!_f) return [3 /*break*/, 14];
+                return [4 /*yield*/, web.chat.postMessage(NumScale_1.NumScale(channel_id))];
+            case 13:
+                _f = (_j.sent());
+                _j.label = 14;
+            case 14:
+                _f;
+                return [3 /*break*/, 22];
+            case 15:
+                scale = response.actions[0].selected_option;
+                state.numScale = scale;
+                _g = state.numScale && web;
+                if (!_g) return [3 /*break*/, 17];
+                return [4 /*yield*/, web.chat.postMessage({
+                        channel: channel_id,
+                        "text": "Thank you. Proceed to save responses?",
+                    })];
+            case 16:
+                _g = (_j.sent());
+                _j.label = 17;
+            case 17:
+                _g;
+                _h = web;
+                if (!_h) return [3 /*break*/, 19];
+                return [4 /*yield*/, web.chat.postMessage(Submit_1.Submit(channel_id))];
+            case 18:
+                _h = (_j.sent());
+                _j.label = 19;
+            case 19:
+                _h;
+                return [3 /*break*/, 22];
+            case 20:
+                res_1 = response.actions[0].value;
+                if (res_1 === 'yes') {
+                    newUser = new ResponseModel(__assign({ user: response.user.username }, state));
+                    newUser.save(function (err, userResponse) {
+                        return __awaiter(this, void 0, void 0, function () {
+                            var _a, _b;
+                            return __generator(this, function (_c) {
+                                switch (_c.label) {
+                                    case 0:
+                                        if (!err) return [3 /*break*/, 3];
+                                        console.error(err);
+                                        _a = web;
+                                        if (!_a) return [3 /*break*/, 2];
+                                        return [4 /*yield*/, web.chat.postMessage({
+                                                channel: channel_id,
+                                                text: "Thank you for your responses. Please visit " + process.env.BASE_URL + "/view-response/" + response.user.username + " to view your reponse"
+                                            })];
+                                    case 1:
+                                        _a = (_c.sent());
+                                        _c.label = 2;
+                                    case 2: return [2 /*return*/, _a];
+                                    case 3:
+                                        _b = web;
+                                        if (!_b) return [3 /*break*/, 5];
+                                        return [4 /*yield*/, web.chat.postMessage({
+                                                channel: channel_id,
+                                                text: "Thank you for your responses. Please visit " + process.env.BASE_URL + "/view-response/" + response.user.username + " to view your reponse"
+                                            })];
+                                    case 4:
+                                        _b = (_c.sent());
+                                        _c.label = 5;
+                                    case 5:
+                                        _b;
+                                        return [2 /*return*/];
+                                }
+                            });
+                        });
+                    });
+                }
+                return [3 /*break*/, 22];
+            case 21: return [3 /*break*/, 22];
+            case 22: return [2 /*return*/];
         }
     });
 }); });
@@ -331,37 +293,22 @@ rtm && rtm.on('ready', function () { return __awaiter(void 0, void 0, void 0, fu
     });
 }); });
 rtm && rtm.on('slack_event', function (eventType, event) { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        if (event && event.type === 'message') {
-            if (event.text === 'Hello @bot') {
-                hello(event.channel, event.user);
-            }
+    var _a;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                if (!(event && event.type === 'message')) return [3 /*break*/, 3];
+                if (!(event.text === 'Hello @bot')) return [3 /*break*/, 3];
+                _a = web;
+                if (!_a) return [3 /*break*/, 2];
+                return [4 /*yield*/, web.chat.postMessage(Feeling_1.Feeling(event.channel))];
+            case 1:
+                _a = (_b.sent());
+                _b.label = 2;
+            case 2:
+                _a;
+                _b.label = 3;
+            case 3: return [2 /*return*/];
         }
-        return [2 /*return*/];
     });
 }); });
-function hello(channelId, userId) {
-    sendMessage(channelId, "Welcome. How are you doing?");
-}
-function sendMessage(channel, message) {
-    return __awaiter(this, void 0, void 0, function () {
-        var _a;
-        return __generator(this, function (_b) {
-            switch (_b.label) {
-                case 0:
-                    _a = web;
-                    if (!_a) return [3 /*break*/, 2];
-                    return [4 /*yield*/, web.chat.postMessage({
-                            channel: channel,
-                            text: message,
-                        })];
-                case 1:
-                    _a = (_b.sent());
-                    _b.label = 2;
-                case 2:
-                    _a;
-                    return [2 /*return*/];
-            }
-        });
-    });
-}
