@@ -6,7 +6,6 @@ import { model, Schema } from 'mongoose';
 import { Feeling } from './src/Feeling';
 import { Hobbies } from './src/Hobbies';
 import { NumScale } from './src/NumScale';
-import { Submit } from './src/Submit';
 import { WalkDay } from './src/WalkDay';
 import { WalkTime } from './src/WalkTime';
 require('dotenv').config();
@@ -57,7 +56,6 @@ const state: ResponseType = {
 }
 
 app.post('/', async (req: Request, res: Response) => {
-    console.log('here', state)
     res.status(200).send();
     const { channel_id } = req.body;
     !state.feeling && web && await web.chat.postMessage(
